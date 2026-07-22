@@ -15,5 +15,24 @@
   },
   "dependencies": {
     "three": "^0.185.1"
+  },
+  "build": {
+    "appId": "com.soundis.app",
+    "productName": "Soundis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "renderer/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "identity": null,
+      "extendInfo": {
+        "NSAudioCaptureUsageDescription": "Soundis captures system audio to drive the visualizer.",
+        "NSMicrophoneUsageDescription": "Soundis captures microphone audio to drive the visualizer."
+      }
+    }
   }
 }
