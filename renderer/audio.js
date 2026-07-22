@@ -36,4 +36,52 @@ function computeBandEnergies(dataArray, ranges) {
   };
 }
 
-module.exports = { computeBandRanges, computeBandEnergies };
+class AudioSourceManager {
+  constructor({ fftSize = 512 } = {}) {
+    this.audioContext = new AudioContext();
+    this.analyser = this.audioContext.createAnalyser();
+    this.analyser.fftSize = fftSize;
+    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    this.bandRanges = computeBandRanges(this.audioContext.sampleRate, fftSize);
+    this.currentStream = null;
+    this.sourceNode = null;
+  }
+
+  async useMicrophone() {
+    await this.audioContext.resume();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this._switchStream(stream);
+  }
+
+  async useSystemAudio() {
+    await this.audioContext.resume();
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true,
+    });
+    stream.getVideoTracks().forEach((track) => {
+      track.stop();
+      stream.removeTrack(track);
+    });
+    this._switchStream(stream);
+  }
+
+  _switchStream(stream) {
+    if (this.sourceNode) {
+      this.sourceNode.disconnect();
+    }
+    if (this.currentStream) {
+      this.currentStream.getTracks().forEach((track) => track.stop());
+    }
+    this.currentStream = stream;
+    this.sourceNode = this.audioContext.createMediaStreamSource(stream);
+    this.sourceNode.connect(this.analyser);
+  }
+
+  getBandEnergies() {
+    this.analyser.getByteFrequencyData(this.dataArray);
+    return computeBandEnergies(this.dataArray, this.bandRanges);
+  }
+}
+
+module.exports = { computeBandRanges, computeBandEnergies, AudioSourceManager };
