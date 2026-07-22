@@ -1,0 +1,19 @@
+{
+  "name": "soundis",
+  "version": "0.1.0",
+  "description": "Local audio-reactive visualizer for mic and system audio (macOS)",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/",
+    "build": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  }
+}
