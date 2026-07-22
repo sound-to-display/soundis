@@ -54,6 +54,7 @@ module.exports = {
 {
   bass, mid, treble,  // 0–1 정규화 (energies/255)
   level,              // (bass+mid+treble)/3 — 유휴 판단 등에 사용
+  bins,               // Uint8Array(256) raw 주파수 빈 (ARCADE 실스펙트럼용)
   waveform,           // Uint8Array (time-domain, SCOPE용. 128=무음 중심)
   time,               // 초 (performance.now()/1000)
   dt,                 // 직전 프레임과의 간격(초)
