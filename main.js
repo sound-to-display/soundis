@@ -16,20 +16,17 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  session.defaultSession.setDisplayMediaRequestHandler(
-    (request, callback) => {
-      desktopCapturer
-        .getSources({ types: ['screen'] })
-        .then((sources) => {
-          callback({ video: sources[0], audio: 'loopback' });
-        })
-        .catch((error) => {
-          console.error('[main] Failed to resolve display media sources:', error);
-          callback({ video: null, audio: null });
-        });
-    },
-    { useSystemPicker: true }
-  );
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer
+      .getSources({ types: ['screen'] })
+      .then((sources) => {
+        callback({ video: sources[0], audio: 'loopback' });
+      })
+      .catch((error) => {
+        console.error('[main] Failed to resolve display media sources:', error);
+        callback({ video: null, audio: null });
+      });
+  });
 
   createWindow();
 
