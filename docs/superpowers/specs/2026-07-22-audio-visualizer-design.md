@@ -15,7 +15,18 @@ macOS(Sequoia 15+) 전용 Electron 데스크톱 앱. 마이크 또는 시스템 
 ## Confirmed Technical Decisions
 
 - Electron 데스크톱 앱 (브라우저 앱 아님) — 시스템 오디오 전체 캡처를 위해 필요
-- 시스템 오디오 캡처: `electron-audio-loopback` (macOS CoreAudio Tap API 필요, Electron v39+ 권장)
+- 시스템 오디오 캡처: Electron 네이티브 API (`session.setDisplayMediaRequestHandler` +
+  `desktopCapturer`). 원래는 `electron-audio-loopback` 패키지를 쓸 계획이었으나, 이
+  패키지는 공식적으로 `Electron >=31.0.1 <39.0.0`만 지원하며 39 이상에서는 "필요 없다"고
+  명시하고 있다. macOS CoreAudio Tap 네이티브 지원이 정확히 Electron 39부터 Chromium에
+  내장됐고, 현재 최신 안정 버전은 43.x이므로 별도 패키지 없이 네이티브 API로 구현한다
+  (의존성 하나 감소 + 최신 Electron 유지 가능)
+- 패키징: `electron-builder`로 macOS `.app` 빌드. macOS 14.2+에서는 `desktopCapturer`
+  오디오 캡처에 `NSAudioCaptureUsageDescription` Info.plist 키가 반드시 있어야 하는데,
+  `electron .`으로 개발 모드 실행 시 쓰이는 Electron 바이너리의 기본 Info.plist에는
+  이 키가 없어 시스템 오디오 캡처가 조용히 실패(무음)할 수 있다. 따라서 `electron-builder`의
+  `mac.extendInfo`로 `NSAudioCaptureUsageDescription`과 `NSMicrophoneUsageDescription`을
+  명시한 빌드 결과물(.app)로 실행해야 시스템 오디오 캡처가 확실히 동작한다
 - 렌더링: Three.js, Web Audio API `AnalyserNode`의 주파수 데이터로 파티클 실시간 구동
 - `fftSize: 512` (지연 vs 해상도 트레이드오프, 필요시 축소 가능)
 - 톤: 어두운 배경 + 따뜻한 앰버(`#e0a458`) 포인트 컬러, 아날로그 믹싱 콘솔 느낌의 미니멀 UI
@@ -27,8 +38,9 @@ macOS(Sequoia 15+) 전용 Electron 데스크톱 앱. 마이크 또는 시스템 
 
 ```
 soundis/
-├── package.json          # electron, electron-audio-loopback, three 의존성
-├── main.js                # Electron 메인 프로세스, initMain()으로 루프백 초기화
+├── package.json          # electron, electron-builder, three 의존성 + build 설정(mac.extendInfo)
+├── main.js                # Electron 메인 프로세스, setDisplayMediaRequestHandler로
+│                          # 시스템 오디오 루프백 등록 + BrowserWindow 생성
 ├── renderer/
 │   ├── index.html         # UI 셸 (다크 배경, 모노스페이스, 하단 토글)
 │   ├── style.css          # 믹싱 콘솔 톤 스타일
@@ -47,9 +59,11 @@ soundis/
 ## Audio Pipeline
 
 - **마이크 입력**: `navigator.mediaDevices.getUserMedia({ audio: true })`
-- **시스템 오디오 입력**: 메인 프로세스에서 `electron-audio-loopback`의 `enableLoopbackAudio()`로
-  세션 훅을 걸고, 렌더러에서 `getDisplayMedia({ audio: true, video: true })` 호출 후 video
-  트랙은 즉시 정지·폐기 (오디오만 필요)
+- **시스템 오디오 입력**: 메인 프로세스에서 `session.defaultSession.setDisplayMediaRequestHandler`를
+  등록해 `desktopCapturer.getSources({ types: ['screen'] })`로 얻은 첫 화면 소스와
+  `audio: 'loopback'`을 콜백으로 반환한다. 렌더러에서는 `getDisplayMedia({ video: true, audio: true })`를
+  호출하면 시스템 오디오가 포함된 스트림을 받는다 (video 요청이 없으면 실패하므로 반드시
+  같이 요청). video 트랙은 받은 즉시 정지·제거한다 (오디오만 필요)
 - **소스 전환**: 기존 `MediaStream` 트랙 정지 → 새 스트림 획득 → 기존 `AudioContext`는
   재사용하고 `MediaStreamAudioSourceNode`만 교체한다 (AudioContext를 매번 재생성하지
   않아 전환 시 클릭 노이즈·딜레이를 최소화)
@@ -85,8 +99,11 @@ soundis/
 
 - `computeBandRanges`, `computeBandEnergies` 등 순수 함수는 Node 내장 테스트 러너
   (`node --test`)로 유닛 테스트한다. 외부 테스트 프레임워크는 추가하지 않는다.
-- Three.js 렌더링과 Electron 오디오 캡처는 유닛테스트 대상이 아니다. `/run`으로 앱을
-  실제로 띄워 다음을 수동 확인한다:
-  - 마이크 토글 시 소리에 반응하는지
-  - 시스템 오디오 토글 후 유튜브/스포티파이 등 재생 중인 소리에 반응하는지
+- Three.js 렌더링과 Electron 오디오 캡처는 유닛테스트 대상이 아니다. 마이크 토글은
+  `npm start` 개발 모드로도 확인 가능하지만, 시스템 오디오 캡처는 `NSAudioCaptureUsageDescription`
+  키가 포함된 패키지 빌드(`npm run build` → 생성된 `.app` 실행)에서만 신뢰성 있게
+  확인할 수 있다. 다음을 수동 확인한다:
+  - 마이크 토글 시 소리에 반응하는지 (개발 모드에서 확인 가능)
+  - 패키지 빌드된 `.app`에서 시스템 오디오 토글 후 유튜브/스포티파이 등 재생 중인
+    소리에 반응하는지
   - 소스 전환 시 클릭 노이즈나 긴 끊김 없이 매끄럽게 전환되는지
