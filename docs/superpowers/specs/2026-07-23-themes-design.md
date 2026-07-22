@@ -90,14 +90,16 @@ renderer/visualizer.js  # 삭제 (ring.js로 이식)
 ### Stage API
 
 ```js
-const stage = createStage(container, { getFrame });
-// getFrame(): renderer.js가 AudioSourceManager에서 frame 데이터를 만들어 반환
+const stage = createStage(container, {
+  getFrame,        // renderer.js가 AudioSourceManager에서 frame 데이터를 만들어 반환
+  onThemeChange,   // (theme, index) — 마운트 성공 시(초기 포함) 호출, 셀렉터 라벨 갱신용
+  onThemeError,    // (theme) — create() 실패 시 호출, 상태 텍스트 표시용
+});
 
 stage.themes            // [{id, name}] 표시용
 stage.currentIndex      // 현재 테마 인덱스
 stage.setTheme(index)   // 전환 (트랜지션 포함, 진행 중 재호출은 무시)
 stage.next() / stage.prev()
-stage.onThemeChange(cb) // 셀렉터 라벨 갱신용
 ```
 
 ### 전환 (딥-스루)
