@@ -28,6 +28,7 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp "$BIN" "$CONTENTS/MacOS/Soundis"
 cp "Scripts/Info.plist" "$CONTENTS/Info.plist"
+[ -f "Scripts/AppIcon.icns" ] && cp "Scripts/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 
 # Prefer the stable self-signed identity (permissions persist across rebuilds);
 # fall back to ad-hoc if it hasn't been created yet.

@@ -10,6 +10,8 @@
   <string>com.soundis.swift</string>
   <key>CFBundleExecutable</key>
   <string>Soundis</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
