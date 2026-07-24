@@ -2,6 +2,8 @@ import CoreGraphics
 import Foundation
 
 /// Spiral galaxy with mood-driven color grading — port of themes/ring.js.
+/// Beats punch a hot core flare and jolt the camera; energy speeds the orbit
+/// and widens the sway; treble makes the stars shimmer and lift.
 final class VortexTheme: Theme {
     let id = "ring"
     let name = "VORTEX"
@@ -21,8 +23,11 @@ final class VortexTheme: Theme {
 
     private var frame = Frame()
     private var rotation: Double = 0
+    private var camOrbit: Double = 0
     private var bassAvg: Float = 0
-    private var pulse: Double = 0
+    private var pulse: Double = 0          // shockwave front, slow decay
+    private var beatKick: Double = 0       // camera jolt, fast decay
+    private var coreFlare: CGFloat = 0     // hot core burst, fast decay
     private var bassSm: CGFloat = 0
     private var trebSm: CGFloat = 0
     private var energySm: CGFloat = 0
@@ -58,15 +63,23 @@ final class VortexTheme: Theme {
         let dt = frame.dt
 
         bassAvg += (frame.bass - bassAvg) * Float(min(dt * 2, 1))
-        if frame.bass > 0.3 && frame.bass > bassAvg * 1.4 { pulse = 1 }
+        if frame.bass > 0.28 && frame.bass > bassAvg * 1.35 {
+            pulse = 1
+            beatKick = 1
+            coreFlare = 1
+        }
         pulse = max(pulse - dt * 1.2, 0)
-
-        rotation += (0.12 + Double(frame.mid) * 1.1) * dt
+        beatKick = max(beatKick - dt * 3.5, 0)
+        coreFlare = max(coreFlare - dt * 2.6, 0)
 
         let ease = CGFloat(min(dt * 0.8, 1))
         bassSm += (CGFloat(frame.bass) - bassSm) * ease
         trebSm += (CGFloat(frame.treble) - trebSm) * ease
         energySm += (CGFloat(frame.level) - energySm) * ease
+
+        // Stars spin harder with mids; the whole disc orbits faster when loud.
+        rotation += (0.12 + Double(frame.mid) * 1.8) * dt
+        camOrbit += (0.08 + Double(energySm) * 1.1) * dt
     }
 
     func draw(in ctx: CGContext, size: CGSize) {
@@ -74,11 +87,14 @@ final class VortexTheme: Theme {
         ctx.fill(CGRect(origin: .zero, size: size))
 
         let time = frame.time
-        let w = size.width
-        let h = size.height
-        let cx = w / 2
-        let cy = h / 2
+        let w = size.width, h = size.height
         let focal = min(w, h) * 0.9
+        let e = Double(energySm)
+
+        // Dynamic camera position: gentle idle sway, a wide swing when loud,
+        // and a sharp jolt on every detected beat. Stars + core share it.
+        let cxS = w / 2 + CGFloat(sin(time * 0.3) * 8 + e * sin(time * 0.9) * 34 + beatKick * cos(time * 32) * 16)
+        let cyS = h / 2 + CGFloat(cos(time * 0.23) * 6 + e * cos(time * 1.15) * 26 + beatKick * sin(time * 27) * 16)
 
         // Mood tint
         var tint = amber
@@ -89,71 +105,81 @@ final class VortexTheme: Theme {
         let idleDrift = 0.1 + 0.1 * sin(time * 0.15)
         tint = tint.lerp(violet, CGFloat(idleDrift) * (1 - min(energySm * 3, 1)))
 
-        // Camera: orbits the disc, tilted down
-        let camAngle = time * 0.08
-        let tiltY = 0.42 + 0.12 * sin(time * 0.21)
+        // Camera: orbit accelerates with energy, tilt swings, frame rolls a little.
+        let camAngle = camOrbit
+        let tiltY = 0.42 + 0.12 * sin(time * 0.21) + e * 0.22 * sin(time * 0.5)
         let cosA = cos(camAngle), sinA = sin(camAngle)
         let cosT = cos(tiltY), sinT = sin(tiltY)
+        let roll = e * 0.18 * sin(time * 0.6) + beatKick * 0.05 * sin(time * 22)
+        let cosR = CGFloat(cos(roll)), sinR = CGFloat(sin(roll))
 
-        let breath = 1 + 0.04 * sin(time * 0.6) + Double(frame.bass) * 0.25
+        let breath = 1 + 0.04 * sin(time * 0.6) + Double(frame.bass) * 0.4 + pulse * 0.18
         let pulseFront = 1 - pulse
         ctx.setBlendMode(.plusLighter)
 
         for i in 0..<Self.count {
             let d = dist[i]
             let bin = Double(frame.bins[min(Int(d * 200), 255)])
-            let lift = bin * bin * 1.4
+            let lift = bin * bin * 2.0 + pulse * 0.25
 
             let angle = baseAngle[i] + d * Self.twist + rotation * (1.6 - d)
-            let r = (d * Self.galaxyRadius + scatter[i]) * breath
+            let shimmer = Double(trebSm) * 0.15 * sin(time * speed[i] + phase[i])
+            let r = (d * Self.galaxyRadius + scatter[i]) * breath + shimmer
 
             var x = cos(angle) * r
             var y = lift * (i % 2 == 0 ? 1.0 : -1.0)
-                + 0.06 * sin(time * speed[i] * 0.3 + phase[i])
+                + (0.06 + Double(trebSm) * 0.5) * sin(time * speed[i] * 0.3 + phase[i])
             var z = sin(angle) * r
 
             // Orbit (rotate about Y), then tilt (rotate about X)
             let rx = x * cosA - z * sinA
             let rz = x * sinA + z * cosA
-            x = rx
-            z = rz
+            x = rx; z = rz
             let ry = y * cosT - z * sinT
             let rz2 = y * sinT + z * cosT
-            y = ry
-            z = rz2
+            y = ry; z = rz2
 
             let depth = z + 8
             guard depth > 1 else { continue }
             let scale = focal / (depth * 60)
-            let sx = cx + CGFloat(x) * focal / CGFloat(depth) * 0.9
-            let sy = cy + CGFloat(y) * focal / CGFloat(depth) * 0.9
+            let dx = CGFloat(x) * focal / CGFloat(depth) * 0.9
+            let dy = CGFloat(y) * focal / CGFloat(depth) * 0.9
+            let sx = cxS + dx * cosR - dy * sinR
+            let sy = cyS + dx * sinR + dy * cosR
 
             let twinkle = 0.5 + 0.5 * sin(time * speed[i] + phase[i])
-            var glow = (1 - d) * 0.55 + 0.25 + twinkle * Double(frame.treble) * 0.6 + lift * 0.5
+            var glow = (1 - d) * 0.55 + 0.25 + twinkle * Double(frame.treble) * 0.9 + lift * 0.5
             glow *= 1 - haze[i] * 0.55
             let frontDist = abs(d - pulseFront)
             if pulse > 0 && frontDist < 0.12 {
-                glow += (1 - frontDist / 0.12) * pulse * 0.9
+                glow += (1 - frontDist / 0.12) * pulse * 1.1
             }
             let t = CGFloat(min(glow, 1.6))
             let color = edge.lerp(tint, t)
-            // Perspective point size: stars are fine dots that swell only slightly
-            // up close. (scale ≈ focal/(depth·60), so ~1–3px across the disc.)
             let dotSize = max(scale * 1.7, 0.8)
             ctx.setFillColor(color.cgColor(alpha: min(0.3 + t * 0.5, 1)))
             ctx.fillEllipse(in: CGRect(x: sx - dotSize / 2, y: sy - dotSize / 2, width: dotSize, height: dotSize))
         }
 
-        // Core glow swelling with bass
-        let coreR = (min(w, h) * 0.09) * (1 + CGFloat(frame.bass) * 0.9)
-        let colors = [tint.cgColor(alpha: 0.9), tint.cgColor(alpha: 0)] as CFArray
-        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
-            ctx.drawRadialGradient(
-                gradient,
-                startCenter: CGPoint(x: cx, y: cy), startRadius: 0,
-                endCenter: CGPoint(x: cx, y: cy), endRadius: coreR,
-                options: []
-            )
+        // Core glow: radius rides smoothed bass + the beat pulse, moving with the camera.
+        let base = min(w, h)
+        let coreR = base * (0.06 + bassSm * 0.14 + CGFloat(pulse) * 0.10)
+        if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                              colors: [tint.cgColor(alpha: 0.85), tint.cgColor(alpha: 0)] as CFArray,
+                              locations: [0, 1]) {
+            ctx.drawRadialGradient(g, startCenter: CGPoint(x: cxS, y: cyS), startRadius: 0,
+                                   endCenter: CGPoint(x: cxS, y: cyS), endRadius: coreR, options: [])
+        }
+        // Beat flare: a hot white-gold burst punched on each detected beat.
+        if coreFlare > 0.01 {
+            let hot = tint.lerp(RGB(0xffffff), 0.65)
+            let flareR = base * (0.10 + CGFloat(pulse) * 0.12)
+            if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                  colors: [hot.cgColor(alpha: 0.9 * coreFlare), hot.cgColor(alpha: 0)] as CFArray,
+                                  locations: [0, 1]) {
+                ctx.drawRadialGradient(g, startCenter: CGPoint(x: cxS, y: cyS), startRadius: 0,
+                                       endCenter: CGPoint(x: cxS, y: cyS), endRadius: flareR, options: [])
+            }
         }
         ctx.setBlendMode(.normal)
     }

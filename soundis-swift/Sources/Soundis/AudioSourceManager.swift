@@ -37,6 +37,13 @@ final class AudioSourceManager: NSObject {
     private let minDb: Float = -100
     private let maxDb: Float = -30
 
+    // Diagnostics for the capture path (gated by the SOUNDIS_DEBUG env var).
+    private let dbgOn = ProcessInfo.processInfo.environment["SOUNDIS_DEBUG"] != nil
+    private var dbgCb = 0
+    private func dbg(_ s: String) {
+        if dbgOn { FileHandle.standardError.write(Data(("[soundis] " + s + "\n").utf8)) }
+    }
+
     override init() {
         super.init()
         fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))
@@ -64,7 +71,9 @@ final class AudioSourceManager: NSObject {
 
     func useSystemAudio() async throws {
         try stopCurrent()
+        dbg("useSystemAudio: requesting shareable content…")
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        dbg("shareable content: displays=\(content.displays.count) apps=\(content.applications.count)")
         guard let display = content.displays.first else {
             throw NSError(domain: "Soundis", code: 1, userInfo: [NSLocalizedDescriptionKey: "No display found"])
         }
@@ -81,7 +90,9 @@ final class AudioSourceManager: NSObject {
 
         let stream = SCStream(filter: filter, configuration: config, delegate: nil)
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: DispatchQueue(label: "soundis.audio"))
+        dbg("starting capture…")
         try await stream.startCapture()
+        dbg("capture started OK")
         scStream = stream
         sampleRate = 48000
         activeSource = .system
@@ -196,6 +207,10 @@ extension AudioSourceManager: SCStreamOutput {
             flags: 0,
             blockBufferOut: &blockBuffer
         )
+        dbgCb += 1
+        if dbgOn && dbgCb == 1 {
+            dbg("first audio buffer: status=\(status) numBuffers=\(abl.mNumberBuffers) chans=\(abl.mBuffers.mNumberChannels) bytes=\(abl.mBuffers.mDataByteSize)")
+        }
         guard status == noErr, let mData = abl.mBuffers.mData else { return }
         let count = Int(abl.mBuffers.mDataByteSize) / MemoryLayout<Float>.size
         let samples = mData.bindMemory(to: Float.self, capacity: count)

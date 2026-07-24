@@ -7,7 +7,7 @@
   <key>CFBundleDisplayName</key>
   <string>soundis</string>
   <key>CFBundleIdentifier</key>
-  <string>com.soundis.app</string>
+  <string>com.soundis.swift</string>
   <key>CFBundleExecutable</key>
   <string>Soundis</string>
   <key>CFBundlePackageType</key>

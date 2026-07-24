@@ -1,27 +1,19 @@
 import AppKit
 import AVFoundation
+import CoreGraphics
+import SwiftUI
 
 /// Swift port of the Electron shell (main.js + renderer.js): builds the window,
-/// hosts the StageView, wires the MIC / SYSTEM buttons and the theme selector,
-/// and reskins the chrome to each theme's palette.
+/// hosts the StageView, and overlays the SwiftUI Liquid Glass controls (MIC /
+/// SYSTEM + theme selector), retinting the glass to each theme's accent.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var stage: StageView!
     private let audio = AudioSourceManager()
-
-    private var statusLabel: NSTextField!
-    private var themeNameLabel: NSTextField!
-    private var micButton: NSButton!
-    private var systemButton: NSButton!
-    private var prevButton: NSButton!
-    private var nextButton: NSButton!
-    private var divider: NSView!
+    private let controls = ControlsModel()
     private var keyMonitor: Any?
 
     private var activeSource: AudioSourceManager.Source?
-    private var accent = NSColor(hex: "#e0a458")
-    private var dim = NSColor(hex: "#5a4a38")
-    private var bg = NSColor(hex: "#0a0a0a")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         window = NSWindow(
@@ -34,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        window.backgroundColor = bg
+        window.backgroundColor = NSColor(hex: "#0a0a0a")
         window.center()
 
         let content = NSView()
@@ -42,35 +34,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         stage = StageView(audio: audio)
         stage.onThemeChange = { [weak self] theme, _ in
-            self?.themeNameLabel.stringValue = theme.name
+            self?.controls.themeName = theme.name
             self?.applyPalette(theme.palette)
         }
         stage.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(stage)
 
-        statusLabel = makeLabel("READY — MIC 또는 SYSTEM을 선택하세요", size: 12)
-        content.addSubview(statusLabel)
+        controls.status = "READY — MIC 또는 SYSTEM을 선택하세요"
+        controls.onMic = { [weak self] in self?.toggleMic() }
+        controls.onSystem = { [weak self] in self?.toggleSystem() }
+        controls.onPrev = { [weak self] in self?.stage.prev() }
+        controls.onNext = { [weak self] in self?.stage.next() }
 
-        micButton = makeButton("MIC", action: #selector(toggleMic))
-        systemButton = makeButton("SYSTEM", action: #selector(toggleSystem))
-        prevButton = makeButton("◀", action: #selector(prevTheme))
-        nextButton = makeButton("▶", action: #selector(nextTheme))
-        themeNameLabel = makeLabel("", size: 13)
-        themeNameLabel.alignment = .center
-
-        divider = NSView()
-        divider.wantsLayer = true
-        divider.translatesAutoresizingMaskIntoConstraints = false
-        divider.widthAnchor.constraint(equalToConstant: 1).isActive = true
-        divider.heightAnchor.constraint(equalToConstant: 18).isActive = true
-
-        let controls = NSStackView(views: [micButton, systemButton, divider, prevButton, themeNameLabel, nextButton])
-        controls.orientation = .horizontal
-        controls.spacing = 10
-        controls.alignment = .centerY
-        controls.translatesAutoresizingMaskIntoConstraints = false
-        themeNameLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
-        content.addSubview(controls)
+        let overlay = NSHostingView(rootView: ControlsView(model: controls))
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(overlay)
 
         NSLayoutConstraint.activate([
             stage.topAnchor.constraint(equalTo: content.topAnchor),
@@ -78,11 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stage.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             stage.trailingAnchor.constraint(equalTo: content.trailingAnchor),
 
-            statusLabel.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-            statusLabel.topAnchor.constraint(equalTo: content.topAnchor, constant: 44),
-
-            controls.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-            controls.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -26),
+            overlay.topAnchor.constraint(equalTo: content.topAnchor),
+            overlay.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            overlay.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: content.trailingAnchor),
         ])
 
         window.contentView = content
@@ -96,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let env = ProcessInfo.processInfo.environment
         if let t = env["SOUNDIS_THEME"], let i = Int(t) { stage.setInitialTheme(i) }
         stage.start()
+
+        if env["SOUNDIS_AUTOSYSTEM"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.toggleSystem() }
+        }
 
         // Dev capture: render the stage to a PNG after it settles, then quit.
         if let path = env["SOUNDIS_CAPTURE"] {
@@ -116,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Audio sources
 
-    @objc private func toggleMic() {
+    private func toggleMic() {
         setStatus("MIC 연결 중...")
         AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
             DispatchQueue.main.async {
@@ -128,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 do {
                     try self.audio.useMicrophone()
                     self.activeSource = .mic
-                    self.updateButtons()
+                    self.refreshActiveSource()
                     self.setStatus("MIC ACTIVE")
                 } catch {
                     self.setStatus("마이크 시작 실패: \(error.localizedDescription)")
@@ -137,24 +118,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func toggleSystem() {
+    private func toggleSystem() {
+        // ScreenCaptureKit (audio included) is gated by Screen Recording
+        // permission, and the grant only takes effect after an app relaunch.
+        // If it isn't already present, prompt + open Settings and bail with a
+        // clear message instead of silently capturing nothing.
+        if !CGPreflightScreenCaptureAccess() {
+            CGRequestScreenCaptureAccess()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                NSWorkspace.shared.open(url)
+            }
+            setStatus("화면 기록 권한을 허용한 뒤 앱을 다시 실행하세요 (시스템 설정 › 개인정보 보호 및 보안 › 화면 기록).")
+            return
+        }
         setStatus("SYSTEM AUDIO 연결 중...")
         Task { @MainActor in
             do {
                 try await audio.useSystemAudio()
                 activeSource = .system
-                updateButtons()
+                refreshActiveSource()
                 setStatus("SYSTEM AUDIO ACTIVE")
             } catch {
+                FileHandle.standardError.write(Data("[soundis] useSystemAudio threw: \(error)\n".utf8))
                 setStatus("시스템 오디오 캡처 실패: \(error.localizedDescription)")
             }
         }
     }
-
-    // MARK: - Theme switching
-
-    @objc private func prevTheme() { stage.prev() }
-    @objc private func nextTheme() { stage.next() }
 
     private func handleKey(_ event: NSEvent) -> Bool {
         if let ch = event.charactersIgnoringModifiers?.first,
@@ -169,61 +158,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Palette + chrome
+    // MARK: - State → controls
 
     private func applyPalette(_ palette: Palette) {
-        accent = NSColor(hex: palette.accent)
-        dim = NSColor(hex: palette.dim)
-        bg = NSColor(hex: palette.bg)
-        window.backgroundColor = bg
-        statusLabel.textColor = accent
-        themeNameLabel.textColor = accent
-        divider.layer?.backgroundColor = dim.cgColor
-        updateButtons()
+        window.backgroundColor = NSColor(hex: palette.bg)
+        controls.accent = Color(nsColor: NSColor(hex: palette.accent))
     }
 
-    private func updateButtons() {
-        style(micButton, active: activeSource == .mic)
-        style(systemButton, active: activeSource == .system)
-        style(prevButton, active: false)
-        style(nextButton, active: false)
+    private func refreshActiveSource() {
+        switch activeSource {
+        case .mic: controls.activeSource = "mic"
+        case .system: controls.activeSource = "system"
+        case nil: controls.activeSource = nil
+        }
     }
 
-    private func style(_ button: NSButton, active: Bool) {
-        let fg = active ? bg : accent
-        button.layer?.backgroundColor = active ? accent.cgColor : NSColor.clear.cgColor
-        button.layer?.borderColor = (active ? accent : dim).cgColor
-        button.attributedTitle = NSAttributedString(
-            string: " \(button.title.trimmingCharacters(in: .whitespaces)) ",
-            attributes: [
-                .foregroundColor: fg,
-                .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium),
-            ]
-        )
-    }
-
-    private func setStatus(_ text: String) { statusLabel.stringValue = text }
-
-    // MARK: - Factories
-
-    private func makeLabel(_ text: String, size: CGFloat) -> NSTextField {
-        let label = NSTextField(labelWithString: text)
-        label.font = NSFont.monospacedSystemFont(ofSize: size, weight: .medium)
-        label.textColor = accent
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }
-
-    private func makeButton(_ title: String, action: Selector) -> NSButton {
-        let button = NSButton(title: title, target: self, action: action)
-        button.isBordered = false
-        button.wantsLayer = true
-        button.layer?.cornerRadius = 4
-        button.layer?.borderWidth = 1
-        button.layer?.borderColor = dim.cgColor
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.heightAnchor.constraint(equalToConstant: 28).isActive = true
-        style(button, active: false)
-        return button
-    }
+    private func setStatus(_ text: String) { controls.status = text }
 }
