@@ -35,9 +35,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         content.wantsLayer = true
 
         stage = StageView(audio: audio)
-        stage.onThemeChange = { [weak self] theme, _ in
-            self?.controls.themeName = theme.name
-            self?.applyPalette(theme.palette)
+        controls.themeList = stage.themeList
+        controls.onSelectTheme = { [weak self] i in self?.stage.setTheme(i); self?.controls.pickerOpen = false }
+        stage.onThemeChange = { [weak self] theme, index in
+            guard let self else { return }
+            self.controls.themeName = theme.name
+            self.controls.isGalaxy = self.stage.currentThemeIsGalaxy
+            self.controls.currentIndex = index
+            self.applyPalette(theme.palette)
         }
         stage.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(stage)
@@ -154,6 +159,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleKey(_ event: NSEvent) -> Bool {
+        if event.keyCode == 53 { // Esc
+            if controls.pickerOpen { controls.pickerOpen = false; return true }
+            return false
+        }
         if let ch = event.charactersIgnoringModifiers?.first,
            let n = ch.wholeNumberValue, n >= 1, n <= stage.themes.count {
             stage.setTheme(n - 1)

@@ -7,7 +7,12 @@ final class ControlsModel: ObservableObject {
     @Published var themeName = ""
     @Published var activeSource: String?      // "mic" | "system" | nil
     @Published var accent = Color.white
-    @Published var density = 0.5              // VORTEX star density (0…1)
+    @Published var density = 0.5              // galaxy star density (0…1)
+    @Published var isGalaxy = true
+    @Published var pickerOpen = false
+    @Published var themeList: [(name: String, isGalaxy: Bool)] = []
+    @Published var currentIndex = 0
+    var onSelectTheme: (Int) -> Void = { _ in }
 
     var onMic: () -> Void = {}
     var onSystem: () -> Void = {}
@@ -34,8 +39,8 @@ struct ControlsView: View {
             Spacer()
 
             VStack(spacing: 10) {
-                // VORTEX-only: star density (high = more + smaller, low = sparser).
-                if model.themeName == "VORTEX" {
+                // Galaxy-only: star density (high = more + smaller, low = sparser).
+                if model.isGalaxy {
                     HStack(spacing: 10) {
                         Image(systemName: "circle.grid.2x2").font(.caption)
                         Slider(value: $model.density, in: 0...1)
@@ -58,12 +63,14 @@ struct ControlsView: View {
                         }
                         .buttonStyle(.glass)
 
-                        Text(model.themeName)
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
-                            .frame(minWidth: 92)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .glassEffect()
+                        Button { model.pickerOpen = true } label: {
+                            Text(model.themeName)
+                                .font(.system(.body, design: .monospaced).weight(.semibold))
+                                .frame(minWidth: 92)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 9)
+                        }
+                        .buttonStyle(.glass)
 
                         Button(action: model.onNext) {
                             Image(systemName: "chevron.right").fontWeight(.semibold)
@@ -75,6 +82,7 @@ struct ControlsView: View {
             .padding(.bottom, 26)
         }
         .tint(model.accent)
+        .overlay { if model.pickerOpen { ThemePickerView(model: model) } }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 24)
     }
