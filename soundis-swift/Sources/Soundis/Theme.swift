@@ -32,6 +32,8 @@ enum ThemeRegistry {
             GalaxyTheme(IrregularMorphology()),
             GalaxyTheme(RingMorphology()),
             GalaxyTheme(LenticularMorphology()),
+            GalaxyTheme(PeculiarMorphology()),
+            GalaxyTheme(PolarRingMorphology()),
             WarpTheme(), SeismoTheme(), RainTheme(), InvadersTheme(),
         ]
     }

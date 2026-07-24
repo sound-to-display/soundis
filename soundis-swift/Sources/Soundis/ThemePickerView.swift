@@ -86,6 +86,20 @@ struct GalaxyIcon: View {
                     let a = Double(k) / 48 * 2 * .pi
                     dot(cos(a) * Double(R) * 0.8, sin(a) * Double(R) * 0.8, 1.5, 0.9)
                 }
+            case "PECULIAR":
+                for core in [-1.0, 1.0] {
+                    let cxo = core * Double(R) * 0.5
+                    for _ in 0..<16 { let rr = Double.random(in: 0...Double(R) * 0.3); let a = Double.random(in: 0...(2 * .pi)); dot(cxo + cos(a) * rr, sin(a) * rr, 1.4, 0.9) }
+                    for k in 0..<14 {
+                        let d = Double(k) / 14
+                        let a = (core > 0 ? 2.2 : 2.2 + .pi) + d * 1.6 * core
+                        let rr = Double(R) * (0.3 + d * 0.8)
+                        dot(cxo + cos(a) * rr, sin(a) * rr, 1.2, 0.8 - d * 0.4)
+                    }
+                }
+            case "POLAR RING":
+                for k in 0..<30 { let a = Double(k) / 30 * 2 * .pi; dot(cos(a) * Double(R) * 0.55, sin(a) * Double(R) * 0.22, 1.3, 0.8) }
+                for k in 0..<34 { let a = Double(k) / 34 * 2 * .pi; dot(sin(a) * Double(R) * 0.22, cos(a) * Double(R), 1.4, 0.9) }
             default: // LENTICULAR
                 for k in 0..<40 {
                     let a = Double(k) / 40 * 2 * .pi
