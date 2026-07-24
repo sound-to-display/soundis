@@ -21,8 +21,8 @@ final class ControlsModel: ObservableObject {
     var onDensity: (Double) -> Void = { _ in }
 }
 
-/// Floating Liquid Glass chrome (macOS 26): a glass control capsule at the
-/// bottom, layered over the visualizer.
+/// Floating Liquid Glass chrome (macOS 26): a bottom control bar of clear,
+/// interactive glass pills that the galaxy shows through.
 struct ControlsView: View {
     @ObservedObject var model: ControlsModel
 
@@ -30,61 +30,69 @@ struct ControlsView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            GlassEffectContainer(spacing: 16) {
-                VStack(spacing: 14) {
+            GlassEffectContainer(spacing: 12) {
+                VStack(spacing: 9) {
                     // Galaxy-only: star density (high = more + smaller, low = sparser).
                     if model.isGalaxy {
-                        HStack(spacing: 14) {
-                            Image(systemName: "circle.grid.2x2").font(.callout)
+                        HStack(spacing: 10) {
+                            Image(systemName: "circle.grid.2x2").font(.footnote)
                             Slider(value: $model.density, in: 0...1)
-                                .frame(width: 170)
+                                .frame(width: 150)
                                 .onChange(of: model.density) { _, v in model.onDensity(v) }
-                            Image(systemName: "circle.hexagongrid.fill").font(.callout)
+                            Image(systemName: "circle.hexagongrid.fill").font(.footnote)
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 14)
-                        .glassEffect(.regular.tint(model.accent.opacity(0.4)).interactive(), in: .capsule)
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .glassEffect(.clear.tint(model.accent.opacity(0.18)).interactive(), in: .capsule)
                     }
 
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         source("MIC", key: "mic", action: model.onMic)
                         source("SYSTEM", key: "system", action: model.onSystem)
-
-                        Button(action: model.onPrev) {
-                            Image(systemName: "chevron.left").fontWeight(.semibold)
-                        }
-                        .buttonStyle(.glass)
-
+                        icon("chevron.left", action: model.onPrev)
                         Button { model.pickerOpen = true } label: {
-                            Text(model.themeName)
-                                .font(.system(.body, design: .monospaced).weight(.semibold))
-                                .frame(minWidth: 104)
+                            pill(Text(model.themeName)
+                                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                                .frame(minWidth: 80))
                         }
-                        .buttonStyle(.glass)
-
-                        Button(action: model.onNext) {
-                            Image(systemName: "chevron.right").fontWeight(.semibold)
-                        }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.plain)
+                        icon("chevron.right", action: model.onNext)
                     }
-                    .controlSize(.large)
                 }
             }
-            .padding(.bottom, 30)
+            .padding(.bottom, 24)
         }
         .tint(model.accent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 24)
     }
 
-    /// A source toggle (MIC / SYSTEM): prominent glass when it's the live source.
+    /// A source toggle (MIC / SYSTEM): faint accent tint on the glass when live.
     @ViewBuilder
     private func source(_ title: String, key: String, action: @escaping () -> Void) -> some View {
-        let label = Text(title).font(.system(.body, design: .monospaced).weight(.medium))
-        if model.activeSource == key {
-            Button(action: action) { label }.buttonStyle(.glassProminent)
-        } else {
-            Button(action: action) { label }.buttonStyle(.glass)
+        let active = model.activeSource == key
+        Button(action: action) {
+            Text(title)
+                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .glassEffect(active ? .clear.tint(model.accent.opacity(0.55)).interactive()
+                                    : .clear.interactive(), in: .capsule)
         }
+        .buttonStyle(.plain)
+    }
+
+    private func icon(_ name: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            pill(Image(systemName: name).font(.subheadline.weight(.semibold)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func pill(_ content: some View) -> some View {
+        content
+            .padding(.horizontal, 13)
+            .padding(.vertical, 7)
+            .glassEffect(.clear.interactive(), in: .capsule)
     }
 }

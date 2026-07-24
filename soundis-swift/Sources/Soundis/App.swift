@@ -35,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // (the slider). The window still moves from the transparent title bar.
         window.isMovableByWindowBackground = false
         window.backgroundColor = NSColor(hex: "#0a0a0a")
+        // Always-dark chrome: the app is a dark-space scene, so the glass and
+        // text read correctly regardless of the system light/dark setting.
+        window.appearance = NSAppearance(named: .darkAqua)
         window.center()
 
         let content = NSView()
