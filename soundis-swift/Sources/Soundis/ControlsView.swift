@@ -7,11 +7,13 @@ final class ControlsModel: ObservableObject {
     @Published var themeName = ""
     @Published var activeSource: String?      // "mic" | "system" | nil
     @Published var accent = Color.white
+    @Published var density = 0.5              // VORTEX star density (0…1)
 
     var onMic: () -> Void = {}
     var onSystem: () -> Void = {}
     var onPrev: () -> Void = {}
     var onNext: () -> Void = {}
+    var onDensity: (Double) -> Void = { _ in }
 }
 
 /// Floating Liquid Glass chrome (macOS 26): a status pill up top and a glass
@@ -31,27 +33,43 @@ struct ControlsView: View {
 
             Spacer()
 
-            GlassEffectContainer(spacing: 10) {
-                HStack(spacing: 10) {
-                    source("MIC", key: "mic", action: model.onMic)
-                    source("SYSTEM", key: "system", action: model.onSystem)
-
-                    Button(action: model.onPrev) {
-                        Image(systemName: "chevron.left").fontWeight(.semibold)
+            VStack(spacing: 10) {
+                // VORTEX-only: star density (high = more + smaller, low = sparser).
+                if model.themeName == "VORTEX" {
+                    HStack(spacing: 10) {
+                        Image(systemName: "circle.grid.2x2").font(.caption)
+                        Slider(value: $model.density, in: 0...1)
+                            .frame(width: 140)
+                            .onChange(of: model.density) { _, v in model.onDensity(v) }
+                        Image(systemName: "circle.hexagongrid.fill").font(.caption)
                     }
-                    .buttonStyle(.glass)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .glassEffect()
+                }
 
-                    Text(model.themeName)
-                        .font(.system(.body, design: .monospaced).weight(.semibold))
-                        .frame(minWidth: 92)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .glassEffect()
+                GlassEffectContainer(spacing: 10) {
+                    HStack(spacing: 10) {
+                        source("MIC", key: "mic", action: model.onMic)
+                        source("SYSTEM", key: "system", action: model.onSystem)
 
-                    Button(action: model.onNext) {
-                        Image(systemName: "chevron.right").fontWeight(.semibold)
+                        Button(action: model.onPrev) {
+                            Image(systemName: "chevron.left").fontWeight(.semibold)
+                        }
+                        .buttonStyle(.glass)
+
+                        Text(model.themeName)
+                            .font(.system(.body, design: .monospaced).weight(.semibold))
+                            .frame(minWidth: 92)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .glassEffect()
+
+                        Button(action: model.onNext) {
+                            Image(systemName: "chevron.right").fontWeight(.semibold)
+                        }
+                        .buttonStyle(.glass)
                     }
-                    .buttonStyle(.glass)
                 }
             }
             .padding(.bottom, 26)

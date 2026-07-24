@@ -29,7 +29,16 @@ mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp "$BIN" "$CONTENTS/MacOS/Soundis"
 cp "Scripts/Info.plist" "$CONTENTS/Info.plist"
 
-echo "==> ad-hoc code signing"
-codesign --force --sign - --timestamp=none "$APP"
+# Prefer the stable self-signed identity (permissions persist across rebuilds);
+# fall back to ad-hoc if it hasn't been created yet.
+IDENTITY="Soundis Self-Signed"
+if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+  echo "==> code signing with stable identity '$IDENTITY'"
+  codesign --force --sign "$IDENTITY" --timestamp=none "$APP"
+else
+  echo "==> ad-hoc code signing"
+  echo "    (run ./Scripts/make-signing-cert.sh once so Screen Recording / Mic permission sticks)"
+  codesign --force --sign - --timestamp=none "$APP"
+fi
 
 echo "==> done: $APP"

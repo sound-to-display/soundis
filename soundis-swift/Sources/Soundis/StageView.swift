@@ -65,6 +65,9 @@ final class StageView: NSView {
     func next() { setTheme((currentIndex + 1) % themes.count) }
     func prev() { setTheme((currentIndex - 1 + themes.count) % themes.count) }
 
+    /// Forward a 0…1 density control to whichever themes support it (VORTEX).
+    func setDensity(_ value: CGFloat) { themes.forEach { $0.setDensity(value) } }
+
     /// Choose the starting theme before `start()` (no transition). Ignored once running.
     func setInitialTheme(_ index: Int) {
         guard displayLink == nil, index >= 0, index < themes.count else { return }

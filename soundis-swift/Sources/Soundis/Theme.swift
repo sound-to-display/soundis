@@ -11,10 +11,13 @@ protocol Theme: AnyObject {
     func update(frame: Frame)
     func draw(in ctx: CGContext, size: CGSize)
     func dispose()
+    /// 0…1 control for themes that expose a density (VORTEX star count). No-op otherwise.
+    func setDensity(_ value: CGFloat)
 }
 
 extension Theme {
     func dispose() {}
+    func setDensity(_ value: CGFloat) {}
 }
 
 enum ThemeRegistry {

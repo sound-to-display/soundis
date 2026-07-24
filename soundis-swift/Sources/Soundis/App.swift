@@ -25,7 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "soundis"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
+        // Not movable-by-background: it would hijack drags on the controls
+        // (the slider). The window still moves from the transparent title bar.
+        window.isMovableByWindowBackground = false
         window.backgroundColor = NSColor(hex: "#0a0a0a")
         window.center()
 
@@ -45,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controls.onSystem = { [weak self] in self?.toggleSystem() }
         controls.onPrev = { [weak self] in self?.stage.prev() }
         controls.onNext = { [weak self] in self?.stage.next() }
+        controls.onDensity = { [weak self] d in self?.stage.setDensity(CGFloat(d)) }
+        stage.setDensity(CGFloat(controls.density))
 
         let overlay = NSHostingView(rootView: ControlsView(model: controls))
         overlay.translatesAutoresizingMaskIntoConstraints = false
@@ -72,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
         if let t = env["SOUNDIS_THEME"], let i = Int(t) { stage.setInitialTheme(i) }
+        if let ds = env["SOUNDIS_DENSITY"], let dv = Double(ds) {
+            controls.density = dv
+            stage.setDensity(CGFloat(dv))
+        }
         stage.start()
 
         if env["SOUNDIS_AUTOSYSTEM"] != nil {
