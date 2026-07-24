@@ -23,7 +23,7 @@ extension Theme {
 }
 
 enum ThemeRegistry {
-    /// Selector order locked to match the Electron app: 1-5 keys.
+    /// Eight galaxy morphologies, selectable 1-8 or via the theme picker.
     static func makeThemes() -> [Theme] {
         [
             GalaxyTheme(SpiralMorphology()),
@@ -34,7 +34,6 @@ enum ThemeRegistry {
             GalaxyTheme(LenticularMorphology()),
             GalaxyTheme(PeculiarMorphology()),
             GalaxyTheme(PolarRingMorphology()),
-            WarpTheme(), SeismoTheme(), RainTheme(), InvadersTheme(),
         ]
     }
 }

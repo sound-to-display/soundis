@@ -1,14 +1,11 @@
 import SwiftUI
 
 /// Card-grid theme picker shown in its own floating window (Liquid Glass).
-/// Galaxy cards draw a small static shape hint; other themes use an SF Symbol.
+/// Each galaxy card draws a small static shape hint of its morphology.
 struct ThemePickerView: View {
     @ObservedObject var model: ControlsModel
 
     private let cols = [GridItem(.adaptive(minimum: 108), spacing: 14)]
-    private let symbols: [String: String] = [
-        "WARP": "tornado", "SEISMO": "waveform.path", "RAIN": "cloud.rain", "INVADERS": "gamecontroller"
-    ]
 
     var body: some View {
         VStack(spacing: 14) {
@@ -17,12 +14,7 @@ struct ThemePickerView: View {
                 ForEach(Array(model.themeList.enumerated()), id: \.offset) { idx, t in
                     Button { model.onSelectTheme(idx) } label: {
                         VStack(spacing: 8) {
-                            if t.isGalaxy {
-                                GalaxyIcon(id: t.name).frame(width: 54, height: 54)
-                            } else {
-                                Image(systemName: symbols[t.name] ?? "circle")
-                                    .font(.system(size: 26)).frame(width: 54, height: 54)
-                            }
+                            GalaxyIcon(id: t.name).frame(width: 54, height: 54)
                             Text(t.name).font(.system(.caption, design: .monospaced))
                         }
                         .frame(width: 100, height: 92)
