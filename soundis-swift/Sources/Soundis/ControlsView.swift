@@ -30,23 +30,23 @@ struct ControlsView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            VStack(spacing: 10) {
-                // Galaxy-only: star density (high = more + smaller, low = sparser).
-                if model.isGalaxy {
-                    HStack(spacing: 10) {
-                        Image(systemName: "circle.grid.2x2").font(.caption)
-                        Slider(value: $model.density, in: 0...1)
-                            .frame(width: 140)
-                            .onChange(of: model.density) { _, v in model.onDensity(v) }
-                        Image(systemName: "circle.hexagongrid.fill").font(.caption)
+            GlassEffectContainer(spacing: 16) {
+                VStack(spacing: 14) {
+                    // Galaxy-only: star density (high = more + smaller, low = sparser).
+                    if model.isGalaxy {
+                        HStack(spacing: 14) {
+                            Image(systemName: "circle.grid.2x2").font(.callout)
+                            Slider(value: $model.density, in: 0...1)
+                                .frame(width: 170)
+                                .onChange(of: model.density) { _, v in model.onDensity(v) }
+                            Image(systemName: "circle.hexagongrid.fill").font(.callout)
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 14)
+                        .glassEffect(.regular.tint(model.accent.opacity(0.4)).interactive(), in: .capsule)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .glassEffect()
-                }
 
-                GlassEffectContainer(spacing: 10) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         source("MIC", key: "mic", action: model.onMic)
                         source("SYSTEM", key: "system", action: model.onSystem)
 
@@ -58,9 +58,7 @@ struct ControlsView: View {
                         Button { model.pickerOpen = true } label: {
                             Text(model.themeName)
                                 .font(.system(.body, design: .monospaced).weight(.semibold))
-                                .frame(minWidth: 92)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 9)
+                                .frame(minWidth: 104)
                         }
                         .buttonStyle(.glass)
 
@@ -69,9 +67,10 @@ struct ControlsView: View {
                         }
                         .buttonStyle(.glass)
                     }
+                    .controlSize(.large)
                 }
             }
-            .padding(.bottom, 26)
+            .padding(.bottom, 30)
         }
         .tint(model.accent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
