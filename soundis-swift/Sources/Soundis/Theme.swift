@@ -13,23 +13,19 @@ protocol Theme: AnyObject {
     func dispose()
     /// 0…1 control for themes that expose a density (VORTEX star count). No-op otherwise.
     func setDensity(_ value: CGFloat)
+    var isGalaxy: Bool { get }
 }
 
 extension Theme {
     func dispose() {}
     func setDensity(_ value: CGFloat) {}
+    var isGalaxy: Bool { false }
 }
 
 enum ThemeRegistry {
     /// Selector order locked to match the Electron app: 1-5 keys.
     static func makeThemes() -> [Theme] {
-        [
-            VortexTheme(),
-            WarpTheme(),
-            SeismoTheme(),
-            RainTheme(),
-            InvadersTheme(),
-        ]
+        [GalaxyTheme(SpiralMorphology()), WarpTheme(), SeismoTheme(), RainTheme(), InvadersTheme()]
     }
 }
 
