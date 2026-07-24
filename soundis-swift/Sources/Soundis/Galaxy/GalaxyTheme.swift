@@ -81,48 +81,63 @@ final class GalaxyTheme: Theme {
         let drawn = Int(Double(Self.count) * (0.07 + Double(density) * 0.93))
         let sizeFactor = 1.4 - density * 0.55
         let densityAlpha = 1 - density * 0.12
-        for i in 0..<drawn {
-            let d = s.dist[i]
-            let bin = Double(frame.bins[min(Int(d * 200), 255)])
-            let lift = bin * bin * 1.4 + pulse * 0.15
 
-            // Differential spin about Y, then breath scale.
-            let sp = rotation * s.spin[i]
-            let cs = cos(sp), sn = sin(sp)
-            var x = (s.bx[i] * cs - s.bz[i] * sn) * breath
-            var z = (s.bx[i] * sn + s.bz[i] * cs) * breath
-            var y = s.by[i] * breath
-                + lift * (i % 2 == 0 ? 1.0 : -1.0)
-                + (0.06 + Double(trebSm) * 0.3) * sin(time * s.speed[i] * 0.3 + s.phase[i])
+        // Per-frame constants hoisted out of the per-star inner loop.
+        let vShimmer = 0.06 + Double(trebSm) * 0.3
+        let liftPulse = pulse * 0.15
+        let trebG = Double(frame.treble)
+        let energyG = Double(energySm)
+        let projK = focal * 0.9
 
-            // Camera orbit about Y, then tilt about X.
-            let rx = x * cosA - z * sinA
-            let rz = x * sinA + z * cosA
-            x = rx; z = rz
-            let ry = y * cosT - z * sinT
-            let rz2 = y * sinT + z * cosT
-            y = ry; z = rz2
+        s.withBuffers { b in
+        frame.bins.withUnsafeBufferPointer { bins in
+            for i in 0..<drawn {
+                let d = b.dist[i]
+                let bin = Double(bins[min(Int(d * 200), 255)])
+                let lift = bin * bin * 1.4 + liftPulse
+                let spd = b.speed[i], phs = b.phase[i], hz = b.haze[i]
 
-            let depth = z + 8
-            guard depth > 1 else { continue }
-            let scale = focal / (depth * 60)
-            let dx = CGFloat(x) * focal / CGFloat(depth) * 0.9
-            let dy = CGFloat(y) * focal / CGFloat(depth) * 0.9
-            let sx = cxS + dx * cosR - dy * sinR
-            let sy = cyS + dx * sinR + dy * cosR
+                // Differential spin about Y, then breath scale.
+                let sp = rotation * b.spin[i]
+                let cs = cos(sp), sn = sin(sp)
+                let bxi = b.bx[i], bzi = b.bz[i]
+                var x = (bxi * cs - bzi * sn) * breath
+                var z = (bxi * sn + bzi * cs) * breath
+                var y = b.by[i] * breath
+                    + lift * (i % 2 == 0 ? 1.0 : -1.0)
+                    + vShimmer * sin(time * spd * 0.3 + phs)
 
-            let twinkle = 0.5 + 0.5 * sin(time * s.speed[i] + s.phase[i])
-            var glow = (1 - d) * 0.55 + 0.25 + twinkle * Double(frame.treble) * 0.7 + lift * 0.5
-            glow *= 1 - s.haze[i] * 0.55
-            let frontDist = abs(d - pulseFront)
-            if pulse > 0 && frontDist < 0.12 { glow += (1 - frontDist / 0.12) * pulse * 0.8 }
-            let g = CGFloat(min(glow, 1.6))
-            let hue = baseHue + d * 0.42 + Double(i % 3) * 0.03
-            let sat = min(0.45 + Double(energySm) * 0.4 + Double(g) * 0.2, 0.95) * (1 - s.haze[i] * 0.35)
-            let color = RGB.hsb(hue, sat, min(0.32 + Double(g) * 0.62, 1))
-            let dotSize = max(scale * 1.7 * sizeFactor, 0.6)
-            ctx.setFillColor(color.cgColor(alpha: min(0.3 + g * 0.5, 1) * densityAlpha))
-            ctx.fillEllipse(in: CGRect(x: sx - dotSize / 2, y: sy - dotSize / 2, width: dotSize, height: dotSize))
+                // Camera orbit about Y, then tilt about X.
+                let rx = x * cosA - z * sinA
+                let rz = x * sinA + z * cosA
+                x = rx; z = rz
+                let ry = y * cosT - z * sinT
+                let rz2 = y * sinT + z * cosT
+                y = ry; z = rz2
+
+                let depth = z + 8
+                guard depth > 1 else { continue }
+                let invDepth = 1 / depth
+                let scale = focal * invDepth / 60
+                let dx = CGFloat(x) * projK * CGFloat(invDepth)
+                let dy = CGFloat(y) * projK * CGFloat(invDepth)
+                let sx = cxS + dx * cosR - dy * sinR
+                let sy = cyS + dx * sinR + dy * cosR
+
+                let twinkle = 0.5 + 0.5 * sin(time * spd + phs)
+                var glow = (1 - d) * 0.55 + 0.25 + twinkle * trebG * 0.7 + lift * 0.5
+                glow *= 1 - hz * 0.55
+                let frontDist = abs(d - pulseFront)
+                if pulse > 0 && frontDist < 0.12 { glow += (1 - frontDist / 0.12) * pulse * 0.8 }
+                let g = CGFloat(min(glow, 1.6))
+                let hue = baseHue + d * 0.42 + Double(i % 3) * 0.03
+                let sat = min(0.45 + energyG * 0.4 + Double(g) * 0.2, 0.95) * (1 - hz * 0.35)
+                let color = RGB.hsb(hue, sat, min(0.32 + Double(g) * 0.62, 1))
+                let dotSize = max(scale * 1.7 * sizeFactor, 0.6)
+                ctx.setFillColor(color.cgColor(alpha: min(0.3 + g * 0.5, 1) * densityAlpha))
+                ctx.fillEllipse(in: CGRect(x: sx - dotSize / 2, y: sy - dotSize / 2, width: dotSize, height: dotSize))
+            }
+        }
         }
 
         let base = min(w, h)

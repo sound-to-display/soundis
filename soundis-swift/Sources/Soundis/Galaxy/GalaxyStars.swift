@@ -15,4 +15,21 @@ struct GalaxyStars {
         spin = .init(repeating: 0, count: count); phase = .init(repeating: 0, count: count)
         speed = .init(repeating: 0, count: count); haze = .init(repeating: 0, count: count)
     }
+
+    /// Bounds-check-free view of every attribute for the render hot loop.
+    struct Buffers {
+        let bx, by, bz, dist, spin, phase, speed, haze: UnsafeBufferPointer<Double>
+    }
+
+    /// Vends `UnsafeBufferPointer`s for all attribute arrays in one call so the
+    /// draw loop avoids per-element bounds checks without deep closure nesting.
+    func withBuffers<R>(_ body: (Buffers) -> R) -> R {
+        bx.withUnsafeBufferPointer { bxp in by.withUnsafeBufferPointer { byp in
+        bz.withUnsafeBufferPointer { bzp in dist.withUnsafeBufferPointer { dp in
+        spin.withUnsafeBufferPointer { snp in phase.withUnsafeBufferPointer { php in
+        speed.withUnsafeBufferPointer { spp in haze.withUnsafeBufferPointer { hzp in
+            body(Buffers(bx: bxp, by: byp, bz: bzp, dist: dp,
+                         spin: snp, phase: php, speed: spp, haze: hzp))
+        } } } } } } } }
+    }
 }
