@@ -7,8 +7,6 @@ struct BarredMorphology: Morphology {
 
     func generate(into s: inout GalaxyStars, count: Int) {
         for i in 0..<count {
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
             let roll = Gal.rand()
             if roll < 0.34 {
                 // Bar: elongated along x, thin in z; clamp so it ends at the arm start.

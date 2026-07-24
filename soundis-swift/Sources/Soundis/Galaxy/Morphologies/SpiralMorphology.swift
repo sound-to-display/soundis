@@ -25,8 +25,6 @@ struct SpiralMorphology: Morphology {
             s.bz[i] = sin(angle0) * r0
             s.by[i] = 0
             s.spin[i] = 1.6 - d                      // inner spins faster (differential)
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
         }
     }
 }

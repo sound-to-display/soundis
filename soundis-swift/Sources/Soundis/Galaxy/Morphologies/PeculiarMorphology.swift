@@ -9,8 +9,6 @@ struct PeculiarMorphology: Morphology {
 
     func generate(into s: inout GalaxyStars, count: Int) {
         for i in 0..<count {
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
             let ci = i % 2
             let core = cores[ci]
             let roll = Gal.rand()

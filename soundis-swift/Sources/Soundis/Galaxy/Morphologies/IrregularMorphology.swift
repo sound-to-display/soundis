@@ -18,8 +18,6 @@ struct IrregularMorphology: Morphology {
             s.dist[i] = min(r, 1)
             s.haze[i] = Gal.rand() < 0.3 ? 1 : 0
             s.spin[i] = 0.6
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
         }
     }
 }

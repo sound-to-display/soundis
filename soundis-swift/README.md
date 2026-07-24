@@ -1,9 +1,8 @@
 # soundis (Swift)
 
-macOS(Sonoma 14+)용 오디오 반응형 비주얼라이저. Electron/Three.js 프로토타입을
-네이티브 Swift(AppKit + Core Graphics + ScreenCaptureKit)로 포팅한 버전입니다.
-마이크 또는 시스템에서 재생 중인 소리를 실시간 캡처해 5개 레트로 테마 중 하나로
-시각화합니다.
+macOS(Tahoe 26+)용 오디오 반응형 **은하 비주얼라이저**. 마이크나 시스템에서 재생 중인
+소리를 실시간 캡처해, 우주의 다양한 은하 형태 8종 중 하나로 시각화합니다. 네이티브
+Swift(AppKit + Core Graphics + ScreenCaptureKit) + macOS 26 Liquid Glass UI.
 
 ## 개발 모드로 실행
 
@@ -11,42 +10,39 @@ macOS(Sonoma 14+)용 오디오 반응형 비주얼라이저. Electron/Three.js �
 swift run
 ```
 
-창이 뜨면 유휴(무음) 상태에서도 테마별 애니메이션이 돕니다. **개발 모드 바이너리에는
-Info.plist가 없어 마이크·시스템 오디오 권한을 받을 수 없습니다.** 실제 오디오 테스트는
-아래 앱 번들 빌드를 사용하세요.
+무음 상태에서도 은하가 천천히 회전하며 색이 드리프트합니다. **개발 바이너리에는
+Info.plist가 없어 마이크·시스템 오디오 권한을 못 받습니다.** 실제 오디오는 아래 앱
+번들을 쓰세요.
 
-## 앱 번들 빌드 (오디오 권한 테스트용)
+## 앱 번들 빌드 · 설치
 
 ```bash
-./Scripts/make-app.sh
+./Scripts/make-signing-cert.sh   # 최초 1회: 안정적 자체 서명 인증서 생성
+./Scripts/make-app.sh            # build/Soundis.app 생성 (그 인증서로 서명)
 open build/Soundis.app
 ```
 
-- **마이크**: MIC 버튼을 처음 누르면 마이크 접근 권한 대화상자가 뜹니다.
-- **시스템 오디오**: SYSTEM 버튼을 누르면 화면 기록 권한을 확인합니다. 권한이 없으면
-  시스템 설정의 화면 기록 창을 자동으로 열어줍니다. 거기서 **Soundis를 켠 뒤 앱을 완전히
-  종료하고 다시 실행**하세요 — macOS는 화면 기록 권한을 재실행해야 적용합니다. 재실행 후
-  SYSTEM을 누르면 캡처됩니다. (오디오만 쓰지만 macOS 정책상 화면 기록 권한이 필요합니다.)
+안정 서명 덕분에 **한 번 허용한 권한(마이크·화면 기록)이 재빌드·재실행 후에도 유지**됩니다.
 
-  > ⚠️ `make-app.sh`는 매번 ad-hoc 재서명을 하므로, **다시 빌드하면 부여했던 화면 기록
-  > 권한이 초기화**됩니다. 권한을 준 뒤에는 재빌드하지 말고 그대로 쓰세요. (매번 재빌드해도
-  > 유지하려면 안정적인 자체 서명 인증서로 서명해야 합니다.)
+- **마이크**: MIC 버튼을 처음 누르면 접근 권한 대화상자가 뜹니다.
+- **시스템 오디오**: SYSTEM 버튼이 화면 기록 권한을 확인합니다. 없으면 시스템 설정의
+  화면 기록 창을 자동으로 열어줍니다. Soundis를 켠 뒤 **앱을 한 번 재실행**하면
+  캡처됩니다. (오디오만 쓰지만 macOS 정책상 화면 기록 권한이 필요합니다.)
 
 ## 조작
 
 - **MIC / SYSTEM** — 입력 소스 전환
-- **◀ / ▶ 버튼**, **← / → 방향키** — 테마 순환
-- **숫자키 1–5** — 테마 직접 선택
+- **테마 이름 클릭** — 은하 선택 피커(카드 그리드) 열기 · Esc/바깥 클릭으로 닫기
+- **◀ / ▶ 버튼**, **← / → 방향키** — 은하 순환 · **숫자키 1–8** — 직접 선택
+- **밀도 슬라이더** — 별 밀도(높이면 촘촘+작게, 낮추면 띄엄띄엄+크게)
 
-## 테마
+## 은하 형태 (8종)
 
-| # | 이름 | 원본(JS) | 설명 |
-|---|------|----------|------|
-| 1 | VORTEX | ring | 무드 컬러 그레이딩 나선 은하 |
-| 2 | WARP | horizon | 코르크스크루 웜홀 터널 |
-| 3 | SEISMO | console | 스프링 잉크펜 스트립차트 레코더 |
-| 4 | RAIN | scope | CRT 디지털 레인(매트릭스) |
-| 5 | INVADERS | arcade | 8비트 스펙트럼 인베이더 함대 |
+SPIRAL(나선) · BARRED(막대나선) · ELLIPTICAL(타원) · IRREGULAR(불규칙) ·
+RING(고리) · LENTICULAR(렌즈) · PECULIAR(상호작용 쌍) · POLAR RING(폴라 링).
+
+모두 공통 렌더러를 공유하며, 저음/고음에 색조가 따뜻/차갑게 밀리고, 비트에 코어가
+플레어하며 카메라가 흔들립니다.
 
 ## 구조
 
@@ -55,8 +51,8 @@ open build/Soundis.app
 - `Frame` — 매 프레임 재사용되는 단일 구조체. bass/mid/treble/level(0–1),
   bins(256, 0–1), waveform(512, −1…1), time/dt(초).
 - `StageView` — CVDisplayLink 렌더 루프 + 테마 생명주기 + 250ms 딥-스루 전환.
-- `Theme` / `Themes/*` — 각 테마는 `update(frame:)`로 상태를 진행하고
-  `draw(in:size:)`로 Core Graphics에 그립니다.
-
-포팅 원본은 리포지토리의 `soundis-themes` 브랜치(`.worktrees/themes/soundis/`,
-`renderer/themes/*.js`)입니다.
+- `Galaxy/GalaxyTheme` — 8종이 공유하는 오디오 반응 렌더러(3D 투영·카메라·색·밀도·
+  코어 블룸). 별 위치는 첫 프레임에 지연 생성.
+- `Galaxy/Morphology` + `Galaxy/Morphologies/*` — 형태별 별 분포 생성기. 각자
+  `generate(into:count:)`로 `GalaxyStars`(bx/by/bz·dist·spin…)를 채웁니다.
+- `ControlsView` / `ThemePickerView` — SwiftUI Liquid Glass 컨트롤 바 + 피커.

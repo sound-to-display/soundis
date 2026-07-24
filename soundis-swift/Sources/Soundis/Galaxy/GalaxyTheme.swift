@@ -23,20 +23,36 @@ final class GalaxyTheme: Theme {
     private var trebSm: CGFloat = 0
     private var energySm: CGFloat = 0
     private var density: CGFloat = 0.5
+    private let bgColor = RGB(0x0a0a0a).cgColor()
+    private let morphology: Morphology
+    private var generated = false
 
     init(_ morphology: Morphology) {
         id = morphology.id
         name = morphology.name
         palette = Palette(bg: "#0a0a0a", accent: morphology.accentHex, dim: "#4a4a55")
+        self.morphology = morphology
         s = GalaxyStars(count: Self.count)
-        morphology.generate(into: &s, count: Self.count)
     }
 
     var isGalaxy: Bool { true }
 
     func setDensity(_ value: CGFloat) { density = max(0, min(value, 1)) }
 
+    /// Star positions are generated lazily on first frame, so startup only pays
+    /// for the theme actually shown rather than all eight. Twinkle phase/speed
+    /// (identical for every morphology) is filled here, not in each generator.
+    private func generate() {
+        morphology.generate(into: &s, count: Self.count)
+        for i in 0..<Self.count {
+            s.phase[i] = Gal.rand(0, 2 * .pi)
+            s.speed[i] = 1.5 + Gal.rand(0, 4)
+        }
+        generated = true
+    }
+
     func update(frame: Frame) {
+        if !generated { generate() }
         self.frame = frame
         let dt = frame.dt
         bassAvg += (frame.bass - bassAvg) * Float(min(dt * 2, 1))
@@ -53,7 +69,7 @@ final class GalaxyTheme: Theme {
     }
 
     func draw(in ctx: CGContext, size: CGSize) {
-        ctx.setFillColor(RGB(0x0a0a0a).cgColor())
+        ctx.setFillColor(bgColor)
         ctx.fill(CGRect(origin: .zero, size: size))
 
         let time = frame.time
@@ -134,7 +150,9 @@ final class GalaxyTheme: Theme {
                 let sat = min(0.45 + energyG * 0.4 + Double(g) * 0.2, 0.95) * (1 - hz * 0.35)
                 let color = RGB.hsb(hue, sat, min(0.32 + Double(g) * 0.62, 1))
                 let dotSize = max(scale * 1.7 * sizeFactor, 0.6)
-                ctx.setFillColor(color.cgColor(alpha: min(0.3 + g * 0.5, 1) * densityAlpha))
+                // Raw component setter — no CGColor object allocated per star.
+                ctx.setFillColor(red: color.r, green: color.g, blue: color.b,
+                                 alpha: min(0.3 + g * 0.5, 1) * densityAlpha)
                 ctx.fillEllipse(in: CGRect(x: sx - dotSize / 2, y: sy - dotSize / 2, width: dotSize, height: dotSize))
             }
         }

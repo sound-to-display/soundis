@@ -15,8 +15,6 @@ struct EllipticalMorphology: Morphology {
             s.dist[i] = min(r0 / radius, 1)
             s.haze[i] = Gal.rand() < 0.25 ? 1 : 0
             s.spin[i] = 0.4                                // slow rigid rotation
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
         }
     }
 }

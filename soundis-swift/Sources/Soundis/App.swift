@@ -203,9 +203,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func handleKey(_ event: NSEvent) -> Bool {
-        if event.keyCode == 53 { // Esc
-            if controls.pickerOpen { controls.pickerOpen = false; return true }
-            return false
+        if event.keyCode == 53, controls.pickerOpen { // Esc closes the picker
+            controls.pickerOpen = false
+            return true
         }
         if let ch = event.charactersIgnoringModifiers?.first,
            let n = ch.wholeNumberValue, n >= 1, n <= stage.themes.count {

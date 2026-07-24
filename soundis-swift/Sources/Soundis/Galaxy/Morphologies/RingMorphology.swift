@@ -22,8 +22,6 @@ struct RingMorphology: Morphology {
             s.by[i] = Gal.rand(-0.15, 0.15)
             s.dist[i] = min(r0 / (ringR + 0.6), 1)
             s.spin[i] = 1.0
-            s.phase[i] = Gal.rand(0, 2 * .pi)
-            s.speed[i] = 1.5 + Gal.rand(0, 4)
         }
     }
 }
