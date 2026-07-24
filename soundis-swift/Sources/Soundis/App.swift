@@ -15,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var keyMonitor: Any?
     private var pickerWindow: NSPanel?
     private var cancellables = Set<AnyCancellable>()
+    private var controlsOverlay: NSView?
+    private var controlsHidden = false
 
     private var activeSource: AudioSourceManager.Source?
 
@@ -69,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let overlay = NSHostingView(rootView: ControlsView(model: controls))
         overlay.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(overlay)
+        controlsOverlay = overlay
 
         NSLayoutConstraint.activate([
             stage.topAnchor.constraint(equalTo: content.topAnchor),
@@ -143,6 +146,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         windowMenu.addItem(withTitle: "닫기", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         NSApp.windowsMenu = windowMenu
 
+        let viewItem = NSMenuItem()
+        mainMenu.addItem(viewItem)
+        let viewMenu = NSMenu(title: "보기")
+        viewItem.submenu = viewMenu
+        viewMenu.addItem(withTitle: "컨트롤 가리기/보이기  (H)", action: #selector(toggleControls), keyEquivalent: "")
+
         NSApp.mainMenu = mainMenu
     }
 
@@ -180,6 +189,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // Sync state when the user closes the panel via its own close button.
         if (notification.object as? NSWindow) === pickerWindow { controls.pickerOpen = false }
+    }
+
+    // MARK: - Controls visibility
+
+    /// Hide/show all on-screen chrome (status pill, control bar, density slider)
+    /// at once for a clean full-screen galaxy. Press H.
+    @objc private func toggleControls() {
+        controlsHidden.toggle()
+        controlsOverlay?.isHidden = controlsHidden
+        if controlsHidden { controls.pickerOpen = false }
     }
 
     // MARK: - Audio sources
@@ -235,6 +254,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func handleKey(_ event: NSEvent) -> Bool {
         if event.keyCode == 53, controls.pickerOpen { // Esc closes the picker
             controls.pickerOpen = false
+            return true
+        }
+        if event.charactersIgnoringModifiers == "h", !event.modifierFlags.contains(.command) {
+            toggleControls()   // plain H toggles the UI; ⌘H still hides the app
             return true
         }
         if let ch = event.charactersIgnoringModifiers?.first,
