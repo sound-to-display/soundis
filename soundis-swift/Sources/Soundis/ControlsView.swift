@@ -82,7 +82,6 @@ struct ControlsView: View {
             .padding(.bottom, 26)
         }
         .tint(model.accent)
-        .overlay { if model.pickerOpen { ThemePickerView(model: model) } }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 24)
     }

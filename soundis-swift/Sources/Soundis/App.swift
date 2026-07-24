@@ -1,17 +1,20 @@
 import AppKit
 import AVFoundation
+import Combine
 import CoreGraphics
 import SwiftUI
 
 /// Swift port of the Electron shell (main.js + renderer.js): builds the window,
 /// hosts the StageView, and overlays the SwiftUI Liquid Glass controls (MIC /
 /// SYSTEM + theme selector), retinting the glass to each theme's accent.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var window: NSWindow!
     private var stage: StageView!
     private let audio = AudioSourceManager()
     private let controls = ControlsModel()
     private var keyMonitor: Any?
+    private var pickerWindow: NSPanel?
+    private var cancellables = Set<AnyCancellable>()
 
     private var activeSource: AudioSourceManager.Source?
 
@@ -54,6 +57,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controls.onNext = { [weak self] in self?.stage.next() }
         controls.onDensity = { [weak self] d in self?.stage.setDensity(CGFloat(d)) }
         stage.setDensity(CGFloat(controls.density))
+
+        // Drive a separate floating window from the picker-open state.
+        controls.$pickerOpen
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] open in self?.setPickerVisible(open) }
+            .store(in: &cancellables)
 
         let overlay = NSHostingView(rootView: ControlsView(model: controls))
         overlay.translatesAutoresizingMaskIntoConstraints = false
@@ -106,7 +116,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // The floating picker panel shouldn't keep the app (or block quit) alive.
+        NSApp.windows.allSatisfy { $0 === pickerWindow || !$0.isVisible }
+    }
+
+    // MARK: - Theme picker window
+
+    private func setPickerVisible(_ open: Bool) {
+        if open { showPicker() } else { pickerWindow?.orderOut(nil) }
+    }
+
+    private func showPicker() {
+        if pickerWindow == nil {
+            let hosting = NSHostingController(rootView: ThemePickerView(model: controls))
+            let panel = NSPanel(contentViewController: hosting)
+            panel.title = "테마 선택"
+            panel.styleMask = [.titled, .closable, .utilityWindow, .fullSizeContentView]
+            panel.titlebarAppearsTransparent = true
+            panel.isFloatingPanel = true
+            panel.hidesOnDeactivate = false
+            panel.isReleasedWhenClosed = false
+            panel.backgroundColor = .clear
+            panel.setContentSize(NSSize(width: 580, height: 460))
+            panel.delegate = self
+            panel.center()
+            pickerWindow = panel
+        }
+        pickerWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // Sync state when the user closes the panel via its own close button.
+        if (notification.object as? NSWindow) === pickerWindow { controls.pickerOpen = false }
+    }
 
     // MARK: - Audio sources
 

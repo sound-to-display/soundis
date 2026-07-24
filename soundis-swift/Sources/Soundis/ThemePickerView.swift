@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Static card-grid theme picker overlay (Liquid Glass). Galaxy cards draw a
-/// small static shape hint; other themes use an SF Symbol.
+/// Card-grid theme picker shown in its own floating window (Liquid Glass).
+/// Galaxy cards draw a small static shape hint; other themes use an SF Symbol.
 struct ThemePickerView: View {
     @ObservedObject var model: ControlsModel
 
@@ -11,35 +11,31 @@ struct ThemePickerView: View {
     ]
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.45).ignoresSafeArea()
-                .onTapGesture { model.pickerOpen = false }
-            VStack(spacing: 14) {
-                Text("SELECT THEME").font(.system(.headline, design: .monospaced))
-                LazyVGrid(columns: cols, spacing: 14) {
-                    ForEach(Array(model.themeList.enumerated()), id: \.offset) { idx, t in
-                        Button { model.onSelectTheme(idx) } label: {
-                            VStack(spacing: 8) {
-                                if t.isGalaxy {
-                                    GalaxyIcon(id: t.name).frame(width: 54, height: 54)
-                                } else {
-                                    Image(systemName: symbols[t.name] ?? "circle")
-                                        .font(.system(size: 26)).frame(width: 54, height: 54)
-                                }
-                                Text(t.name).font(.system(.caption, design: .monospaced))
+        VStack(spacing: 14) {
+            Text("SELECT THEME").font(.system(.headline, design: .monospaced))
+            LazyVGrid(columns: cols, spacing: 14) {
+                ForEach(Array(model.themeList.enumerated()), id: \.offset) { idx, t in
+                    Button { model.onSelectTheme(idx) } label: {
+                        VStack(spacing: 8) {
+                            if t.isGalaxy {
+                                GalaxyIcon(id: t.name).frame(width: 54, height: 54)
+                            } else {
+                                Image(systemName: symbols[t.name] ?? "circle")
+                                    .font(.system(size: 26)).frame(width: 54, height: 54)
                             }
-                            .frame(width: 100, height: 92)
-                            .padding(6)
+                            Text(t.name).font(.system(.caption, design: .monospaced))
                         }
-                        .buttonStyle(idx == model.currentIndex ? AnyButtonStyle(.glassProminent) : AnyButtonStyle(.glass))
+                        .frame(width: 100, height: 92)
+                        .padding(6)
                     }
+                    .buttonStyle(idx == model.currentIndex ? AnyButtonStyle(.glassProminent) : AnyButtonStyle(.glass))
                 }
-                .padding(4)
             }
-            .padding(24)
-            .glassEffect(in: .rect(cornerRadius: 24))
-            .frame(maxWidth: 560)
+            .padding(4)
         }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.ultraThinMaterial)
         .tint(model.accent)
     }
 }
