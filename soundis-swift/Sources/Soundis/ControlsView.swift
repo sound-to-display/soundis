@@ -21,21 +21,13 @@ final class ControlsModel: ObservableObject {
     var onDensity: (Double) -> Void = { _ in }
 }
 
-/// Floating Liquid Glass chrome (macOS 26): a status pill up top and a glass
-/// control capsule at the bottom, layered over the visualizer.
+/// Floating Liquid Glass chrome (macOS 26): a glass control capsule at the
+/// bottom, layered over the visualizer.
 struct ControlsView: View {
     @ObservedObject var model: ControlsModel
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(model.status)
-                .font(.system(.callout, design: .monospaced))
-                .lineLimit(1)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 9)
-                .glassEffect()
-                .padding(.top, 18)
-
             Spacer()
 
             VStack(spacing: 10) {

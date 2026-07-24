@@ -10,6 +10,8 @@ final class StageView: NSView {
     private var transitioning = false
 
     var onThemeChange: ((Theme, Int) -> Void)?
+    var onAccentChange: ((RGB) -> Void)?
+    private var accentTick = 0
 
     private var frame_ = Frame()
     private var displayLink: CVDisplayLink?
@@ -107,6 +109,8 @@ final class StageView: NSView {
         frame_.time = now - startTime
         frame_.dt = dt
         themes[currentIndex].update(frame: frame_)
+        accentTick &+= 1
+        if accentTick & 7 == 0 { onAccentChange?(themes[currentIndex].accentColor) }
         needsDisplay = true
     }
 

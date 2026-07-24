@@ -14,12 +14,15 @@ protocol Theme: AnyObject {
     /// 0…1 control for themes that expose a density (VORTEX star count). No-op otherwise.
     func setDensity(_ value: CGFloat)
     var isGalaxy: Bool { get }
+    /// Current representative colour, for tinting the UI to match the visuals.
+    var accentColor: RGB { get }
 }
 
 extension Theme {
     func dispose() {}
     func setDensity(_ value: CGFloat) {}
     var isGalaxy: Bool { false }
+    var accentColor: RGB { RGB(hexString: palette.accent) }
 }
 
 enum ThemeRegistry {

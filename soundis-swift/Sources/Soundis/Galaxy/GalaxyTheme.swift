@@ -23,6 +23,9 @@ final class GalaxyTheme: Theme {
     private var trebSm: CGFloat = 0
     private var energySm: CGFloat = 0
     private var density: CGFloat = 0.5
+    /// The galaxy's current representative colour (its drifting base hue), so the
+    /// UI can tint its buttons to track the visualization's colour.
+    private(set) var accentColor = RGB(0xe0a458)
     private let bgColor = RGB(0x0a0a0a).cgColor()
     private let morphology: Morphology
     private var generated = false
@@ -66,6 +69,9 @@ final class GalaxyTheme: Theme {
         energySm += (CGFloat(frame.level) - energySm) * ease
         rotation += (0.12 + Double(frame.mid) * 1.2) * dt
         camOrbit += (0.08 + Double(energySm) * 0.6) * dt
+
+        let bh = 0.08 + frame.time * 0.015 - Double(bassSm) * 0.06 + Double(trebSm) * 0.14
+        accentColor = RGB.hsb(bh + 0.18, 0.62, 0.95)
     }
 
     func draw(in ctx: CGContext, size: CGSize) {

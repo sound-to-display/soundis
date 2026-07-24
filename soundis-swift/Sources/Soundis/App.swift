@@ -50,6 +50,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self.controls.currentIndex = index
             self.applyPalette(theme.palette)
         }
+        // Tint the controls to the galaxy's drifting colour (throttled ~8 Hz).
+        stage.onAccentChange = { [weak self] c in
+            self?.controls.accent = Color(red: Double(c.r), green: Double(c.g), blue: Double(c.b))
+        }
         stage.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(stage)
 
