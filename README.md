@@ -3,6 +3,8 @@
 macOS(Sequoia 15+)용 오디오 반응형 비주얼라이저. 마이크 또는 시스템에서 재생 중인
 소리(유튜브, 스포티파이 등)를 실시간으로 캡처해 Three.js 파티클 링으로 시각화합니다.
 
+![soundis demo](docs/demo.gif)
+
 ## 개발 모드로 실행
 
 ```bash
