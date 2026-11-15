@@ -43,3 +43,7 @@ open dist/mac-arm64/Soundis.app   # Apple Silicon. Intel이면 dist/mac/Soundis.
 - 시스템 오디오 캡처는 `electron-audio-loopback` 패키지 대신 Electron 네이티브
   `setDisplayMediaRequestHandler` + `desktopCapturer`를 사용합니다 (Electron 39+
   필요, 현재 43.x 기준으로 작성됨).
+
+## License
+
+MIT
